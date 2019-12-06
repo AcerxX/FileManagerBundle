@@ -4,7 +4,7 @@ namespace Artgris\Bundle\FileManagerBundle\Twig;
 
 use Artgris\Bundle\FileManagerBundle\Service\FileTypeService;
 use Twig\Extension\AbstractExtension;
-use Twig\TwigFunction
+use Twig\TwigFunction;
 
 /**
  * @author Arthur Gribet <a.gribet@gmail.com>
