@@ -9,7 +9,7 @@ use Artgris\Bundle\FileManagerBundle\Helpers\UploadHandler;
 use Artgris\Bundle\FileManagerBundle\Twig\OrderExtension;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
@@ -30,7 +30,7 @@ use Symfony\Component\Validator\Constraints\NotBlank;
 /**
  * @author Arthur Gribet <a.gribet@gmail.com>
  */
-class ManagerController extends Controller
+class ManagerController extends AbstractController
 {
     /**
      * @var FileManager
