@@ -6,10 +6,15 @@ use Artgris\Bundle\FileManagerBundle\Event\FileManagerEvents;
 use Artgris\Bundle\FileManagerBundle\Helpers\File;
 use Artgris\Bundle\FileManagerBundle\Helpers\FileManager;
 use Artgris\Bundle\FileManagerBundle\Helpers\UploadHandler;
+use Artgris\Bundle\FileManagerBundle\Service\FilemanagerService;
+use Artgris\Bundle\FileManagerBundle\Service\FileTypeService;
 use Artgris\Bundle\FileManagerBundle\Twig\OrderExtension;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Bundle\FrameworkBundle\Routing\Router;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
@@ -21,11 +26,13 @@ use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Form;
+use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * @author Arthur Gribet <a.gribet@gmail.com>
@@ -36,6 +43,46 @@ class ManagerController extends AbstractController
      * @var FileManager
      */
     protected $fileManager;
+
+    /**
+     * @var TranslatorInterface
+     */
+    protected $translator;
+
+    /**
+     * @var FileTypeService
+     */
+    protected $fileTypeService;
+
+    /**
+     * @var FormFactoryInterface
+     */
+    protected $formFactory;
+
+    /**
+     * @var FilemanagerService
+     */
+    protected $fileManagerService;
+
+    /**
+     * @var Router
+     */
+    protected $router;
+
+    /**
+     * @var EventDispatcherInterface
+     */
+    protected $eventDispatcher;
+
+    public function __construct(TranslatorInterface $translator, FileTypeService $fileTypeService, FormFactoryInterface $formFactory, FilemanagerService $fileManagerService, Router $router, EventDispatcherInterface $eventDispatcher)
+    {
+        $this->translator = $translator;
+        $this->fileTypeService = $fileTypeService;
+        $this->formFactory = $formFactory;
+        $this->fileManagerService = $fileManagerService;
+        $this->router = $router;
+        $this->eventDispatcher = $eventDispatcher;
+    }
 
     /**
      * @Route("/", name="file_manager")
@@ -49,7 +96,7 @@ class ManagerController extends AbstractController
     public function indexAction(Request $request)
     {
         $queryParameters = $request->query->all();
-        $translator = $this->get('translator');
+        $translator = $this->translator;
         $isJson = $request->get('json') ? true : false;
         if ($isJson) {
             unset($queryParameters['json']);
@@ -107,7 +154,7 @@ class ManagerController extends AbstractController
         $formDelete = $this->createDeleteForm()->createView();
         $fileArray = [];
         foreach ($finderFiles as $file) {
-            $fileArray[] = new File($file, $this->get('translator'), $this->get('file_type_service'), $fileManager);
+            $fileArray[] = new File($file, $this->translator, $this->fileTypeService, $fileManager);
         }
 
         if ('dimension' === $orderBy) {
@@ -147,7 +194,7 @@ class ManagerController extends AbstractController
         }
         $parameters['treeData'] = json_encode($directoriesArbo);
 
-        $form = $this->get('form.factory')->createNamedBuilder('rename', FormType::class)
+        $form = $this->formFactory->createNamedBuilder('rename', FormType::class)
             ->add('name', TextType::class, [
                 'constraints' => [
                     new NotBlank(),
@@ -207,7 +254,7 @@ class ManagerController extends AbstractController
      */
     public function renameFileAction(Request $request, $fileName)
     {
-        $translator = $this->get('translator');
+        $translator = $this->translator;
         $queryParameters = $request->query->all();
         $formRename = $this->createRenameForm();
         /* @var Form $formRename */
@@ -270,7 +317,7 @@ class ManagerController extends AbstractController
 
         foreach ($response['files'] as $file) {
             if (isset($file->error)) {
-                $file->error = $this->get('translator')->trans($file->error);
+                $file->error = $this->translator->trans($file->error);
             }
 
             if (!$fileManager->getImagePath()) {
@@ -469,7 +516,7 @@ class ManagerController extends AbstractController
      */
     private function getKernelRoute()
     {
-        return $this->getParameter('kernel.root_dir');
+        return $this->getParameter('kernel.project_dir');
     }
 
     /**
@@ -486,7 +533,7 @@ class ManagerController extends AbstractController
         }
         $webDir = $this->getParameter('artgris_file_manager')['web_dir'];
 
-        $this->fileManager = new FileManager($queryParameters, $this->get('artgris_bundle_file_manager.service.filemanager_service')->getBasePath($queryParameters), $this->getKernelRoute(), $this->get('router'), $webDir);
+        $this->fileManager = new FileManager($queryParameters, $this->fileManagerService->getBasePath($queryParameters), $this->getKernelRoute(), $this->router, $webDir);
 
         return $this->fileManager;
     }
@@ -499,6 +546,6 @@ class ManagerController extends AbstractController
 
         $subject = $arguments['filemanager'];
         $event = new GenericEvent($subject, $arguments);
-        $this->get('event_dispatcher')->dispatch($eventName, $event);
+        $this->eventDispatcher->dispatch($eventName, $event);
     }
 }
