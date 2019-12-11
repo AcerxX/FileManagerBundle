@@ -546,6 +546,6 @@ class ManagerController extends AbstractController
 
         $subject = $arguments['filemanager'];
         $event = new GenericEvent($subject, $arguments);
-        $this->eventDispatcher->dispatch($eventName, $event);
+        $this->eventDispatcher->dispatch($event, $eventName);
     }
 }
